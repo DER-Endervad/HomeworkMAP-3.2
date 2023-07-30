@@ -3,11 +3,27 @@
 #include <algorithm>
 #include <Windows.h>
 #include <future>
+#include <string>
+#include <sstream>
 
+std::string stream(std::vector<int>::iterator begin);
 void print(int& x);
-void my_for_each(std::vector<int>::iterator begin, std::vector<int>::iterator end, void this_print(int&));
-void my_for_each2(int& size1, const int& size2, std::vector<int>::iterator& begin, void this_print(int&));
-void my_for_each3(std::vector<int>::iterator begin, std::promise<int> prom);
+
+template<typename It, typename T>
+T par_for_each(It first, It last, T sss) {
+    unsigned long size = distance(first, last);
+    unsigned long max_size = 1;
+    if (size <= max_size) {
+        return stream(first);
+    }
+    else {
+        It mid = first;
+        std::advance(mid, size / 2);
+        std::future<std::string> first_half_res = std::async(par_for_each<It, T>, first, mid, sss);
+        T second_half_res = par_for_each(mid, last, sss);
+        return first_half_res.get() + second_half_res;
+    }
+}
 
 int main()
 {
@@ -15,46 +31,25 @@ int main()
     SetConsoleCP(1251);
     SetConsoleOutputCP(1251);
 
-    std::vector<int> vec = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    std::vector<int> vec = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+    std::string sss = "sss";
 
     std::cout << "Вывод оригинальноого for_each: ";
-    std::for_each(vec.begin(), vec.end(), print);
+    std::for_each(vec.begin(), vec.end(), print); std::cout << "\n" << std::endl;
 
-    std::cout << std::endl;
     std::cout << "Вывод копии for_each: ";
-    my_for_each(vec.begin(), vec.end(), print);
+    std::cout << par_for_each(vec.begin(), vec.end(), sss) << std::endl;
+    system("Pause");
+    return 0;
 }
 
-void my_for_each(std::vector<int>::iterator begin, std::vector<int>::iterator end, void this_print(int&)) {
-    int null = 0;
-    int size1 = 0, size2 = 0;
-    int full_size = end - begin;
-    size1 = (end - begin) / 3;
-    if ((end - begin) % 3 == 0) {
-        size2 = size1 * 2;
-    }
-    else {
-        size2 = size1 * 2 + 1;
-    }
-    my_for_each2(null, size1, begin, this_print);
-    my_for_each2(size1, size2, begin, this_print);
-    my_for_each2(size2, full_size, begin, this_print);
-}
-
-void my_for_each2(int& size1, const int& size2, std::vector<int>::iterator& begin, void this_print(int&)) {
-    std::promise<int> promise_res1; std::future<int> future_res1 = promise_res1.get_future();
-    std::future<void> task1 = std::async(my_for_each3, begin, std::move(promise_res1));
-    future_res1.wait(); int output = future_res1.get();
-    this_print(output);
-    size1++; begin++;
-    if (size1 != size2) {
-        return my_for_each2(size1, size2, begin, this_print);
-    }
-    return;
-}
-
-void my_for_each3(std::vector<int>::iterator begin, std::promise<int> prom) {
-    prom.set_value(*begin);
+std::string stream(std::vector<int>::iterator begin) {
+    std::string str = "";
+    std::stringstream ss;
+    ss << *begin;
+    ss << " ";
+    str = ss.str();
+    return str;
 }
 
 void print(int& x) {
